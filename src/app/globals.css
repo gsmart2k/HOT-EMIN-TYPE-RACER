@@ -1,26 +1,255 @@
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:ital,wght@0,100..900;1,100..900&display=swap");
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: #000000;
+  --color-foreground: #e0e0e0;
+  --color-neon-red: #ff2020;
+  --color-crimson: #8b0000;
+  --color-dark-navy: #050a1a;
+  --color-metallic: #4a5568;
+  --font-orbitron: "Orbitron", sans-serif;
+  --font-rajdhani: "Rajdhani", sans-serif;
+  --font-exo: "Exo 2", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+:root {
+  --background: #000000;
+  --foreground: #e0e0e0;
+  --neon-red: #ff2020;
+  --crimson: #8b0000;
+  --dark-navy: #050a1a;
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html,
 body {
-  background: var(--background);
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #000000;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Rajdhani", sans-serif;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #ff2020;
+  border-radius: 2px;
+}
+
+/* ─── Scanline overlay ─── */
+.scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.18) 2px,
+    rgba(0, 0, 0, 0.18) 4px
+  );
+  pointer-events: none;
+}
+
+/* ─── Glitch animation ─── */
+@keyframes glitch {
+  0% { clip-path: inset(40% 0 61% 0); transform: translate(-2px, 0); }
+  20% { clip-path: inset(92% 0 1% 0); transform: translate(2px, 0); }
+  40% { clip-path: inset(43% 0 1% 0); transform: translate(-2px, 0); }
+  60% { clip-path: inset(25% 0 58% 0); transform: translate(2px, 0); }
+  80% { clip-path: inset(54% 0 7% 0); transform: translate(-2px, 0); }
+  100% { clip-path: inset(58% 0 43% 0); transform: translate(2px, 0); }
+}
+
+@keyframes glitch2 {
+  0% { clip-path: inset(24% 0 29% 0); transform: translate(2px, 0); }
+  20% { clip-path: inset(54% 0 21% 0); transform: translate(-2px, 0); }
+  40% { clip-path: inset(11% 0 50% 0); transform: translate(2px, 0); }
+  60% { clip-path: inset(70% 0 10% 0); transform: translate(-2px, 0); }
+  80% { clip-path: inset(42% 0 31% 0); transform: translate(2px, 0); }
+  100% { clip-path: inset(20% 0 40% 0); transform: translate(-2px, 0); }
+}
+
+.glitch-layer-1 {
+  animation: glitch 0.4s infinite linear alternate-reverse;
+  color: #ff2020;
+}
+.glitch-layer-2 {
+  animation: glitch2 0.3s infinite linear alternate-reverse;
+  color: #00f0ff;
+}
+
+/* ─── Neon pulse ─── */
+@keyframes neon-pulse {
+  0%, 100% { text-shadow: 0 0 5px #ff2020, 0 0 10px #ff2020, 0 0 20px #ff2020; }
+  50% { text-shadow: 0 0 10px #ff2020, 0 0 20px #ff2020, 0 0 40px #ff2020, 0 0 60px #ff0000; }
+}
+
+.neon-text {
+  animation: neon-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Eye glow ─── */
+@keyframes eye-glow {
+  0%, 100% { filter: drop-shadow(0 0 8px #ff2020) drop-shadow(0 0 20px #ff2020); opacity: 0.9; }
+  50% { filter: drop-shadow(0 0 20px #ff2020) drop-shadow(0 0 50px #ff0000) drop-shadow(0 0 80px #ff0000); opacity: 1; }
+}
+
+/* ─── Holographic border ─── */
+@keyframes holo-border {
+  0% { border-color: rgba(255, 32, 32, 0.4); box-shadow: 0 0 10px rgba(255, 32, 32, 0.2); }
+  50% { border-color: rgba(255, 32, 32, 0.9); box-shadow: 0 0 20px rgba(255, 32, 32, 0.5), inset 0 0 20px rgba(255, 32, 32, 0.1); }
+  100% { border-color: rgba(255, 32, 32, 0.4); box-shadow: 0 0 10px rgba(255, 32, 32, 0.2); }
+}
+
+.holo-border {
+  animation: holo-border 3s ease-in-out infinite;
+}
+
+/* ─── Red button glow ─── */
+@keyframes btn-pulse {
+  0%, 100% { box-shadow: 0 0 10px #ff2020, 0 0 20px rgba(255,32,32,0.4); }
+  50% { box-shadow: 0 0 20px #ff2020, 0 0 40px rgba(255,32,32,0.6), 0 0 60px rgba(255,0,0,0.3); }
+}
+
+.btn-glow {
+  animation: btn-pulse 2s ease-in-out infinite;
+}
+
+/* ─── Fog drift ─── */
+@keyframes fog-drift {
+  0% { transform: translateX(-5%) translateY(0); opacity: 0.25; }
+  50% { transform: translateX(5%) translateY(-20px); opacity: 0.4; }
+  100% { transform: translateX(-5%) translateY(0); opacity: 0.25; }
+}
+
+.fog {
+  animation: fog-drift 12s ease-in-out infinite;
+}
+
+/* ─── Data flicker ─── */
+@keyframes data-flicker {
+  0%, 95%, 100% { opacity: 1; }
+  96% { opacity: 0.4; }
+  97% { opacity: 0.9; }
+  98% { opacity: 0.3; }
+  99% { opacity: 0.8; }
+}
+
+.data-flicker {
+  animation: data-flicker 5s infinite;
+}
+
+/* ─── Countdown shockwave ─── */
+@keyframes shockwave {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+.shockwave {
+  animation: shockwave 0.8s ease-out forwards;
+}
+
+/* ─── Progress bar shimmer ─── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+.progress-shimmer {
+  background: linear-gradient(90deg, #ff2020 0%, #ff6060 30%, #ff2020 60%, #8b0000 100%);
+  background-size: 200% auto;
+  animation: shimmer 2s linear infinite;
+}
+
+/* ─── Cursor blink ─── */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: cursor-blink 0.8s step-end infinite;
+}
+
+/* ─── Upload animation ─── */
+@keyframes upload-scan {
+  0% { transform: translateY(100%); }
+  100% { transform: translateY(-100%); }
+}
+
+.upload-scan {
+  animation: upload-scan 1.5s ease-in-out infinite;
+}
+
+/* ─── Shake ─── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-3px); }
+  40% { transform: translateX(3px); }
+  60% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+}
+
+.shake {
+  animation: shake 0.3s ease;
+}
+
+/* ─── Glassmorphism panel ─── */
+.glass-panel {
+  background: rgba(5, 10, 26, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 32, 32, 0.3);
+  box-shadow: 0 0 30px rgba(255, 32, 32, 0.1), inset 0 0 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ─── Terminal input ─── */
+.terminal-input {
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 32, 32, 0.5);
+  color: #e0e0e0;
+  caret-color: #ff2020;
+  font-family: "Rajdhani", sans-serif;
+}
+
+.terminal-input:focus {
+  outline: none;
+  border-color: #ff2020;
+  box-shadow: 0 0 10px rgba(255, 32, 32, 0.4);
+}
+
+/* ─── Selection ─── */
+::selection {
+  background: rgba(255, 32, 32, 0.4);
+  color: #ffffff;
+}
+
+/* ─── Crown animation ─── */
+@keyframes crown-float {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-6px) rotate(3deg); }
+}
+
+.crown-float {
+  animation: crown-float 2s ease-in-out infinite;
+}
+
+/* ─── Rank glow effects ─── */
+.rank-gold { box-shadow: 0 0 20px rgba(255, 215, 0, 0.4), 0 0 40px rgba(255, 215, 0, 0.1); border-color: rgba(255, 215, 0, 0.5) !important; }
+.rank-silver { box-shadow: 0 0 20px rgba(192, 192, 192, 0.4), 0 0 40px rgba(192, 192, 192, 0.1); border-color: rgba(192, 192, 192, 0.5) !important; }
+.rank-red { box-shadow: 0 0 20px rgba(255, 32, 32, 0.5), 0 0 40px rgba(255, 32, 32, 0.2); border-color: rgba(255, 32, 32, 0.6) !important; }
+
+/* ─── Matrix rain ─── */
+@keyframes matrix-fall {
+  0% { transform: translateY(-100%); opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
 }
