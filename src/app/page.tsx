@@ -55,8 +55,10 @@ export default function Home() {
         const beatPercent =
           total > 1 ? Math.round(((total - rank) / (total - 1)) * 100) : 100;
         setResult({ ...gameResult, rank, beatPercent });
-      } catch {
-        toast.error("Could not save score — check Supabase config.");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[HOT EMIN] Supabase error:", msg);
+        toast.error(`Save failed: ${msg}`, { duration: 8000 });
         setResult(gameResult);
       }
     },
