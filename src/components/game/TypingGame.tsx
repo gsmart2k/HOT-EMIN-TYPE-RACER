@@ -70,44 +70,48 @@ export default function TypingGame({ username, onComplete }: TypingGameProps) {
 
   const progress = Math.round((wordIndex / RACE_WORDS.length) * 100);
 
+  const confirmWord = useCallback(
+    (typed: string) => {
+      const currentWord = RACE_WORDS[wordIndex];
+      if (typed === currentWord) {
+        playClick();
+        setWordIndex((wi) => {
+          const next = wi + 1;
+          if (next >= RACE_WORDS.length) {
+            const completionMs = Date.now() - startTime;
+            const mins = completionMs / 1000 / 60;
+            const finalWpm = Math.round(RACE_WORDS.length / mins);
+            const finalAccuracy = totalKeystrokes > 0
+              ? Math.round(((totalKeystrokes - errors) / totalKeystrokes) * 100)
+              : 100;
+            playComplete();
+            setTimeout(() => {
+              onComplete({
+                username,
+                completionTime: completionMs,
+                wpm: finalWpm,
+                accuracy: Math.max(0, Math.min(100, finalAccuracy)),
+              });
+            }, 0);
+          }
+          return next;
+        });
+        setCurrentInput("");
+        setCharIndex(0);
+        setInputError(false);
+        setStreak((s) => s + 1);
+      } else {
+        triggerError();
+      }
+    },
+    [wordIndex, startTime, totalKeystrokes, errors, username, onComplete]
+  );
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
-      // Block on wrong input key trying to proceed
       if (e.key === " " || e.key === "Tab") {
         e.preventDefault();
-        const currentWord = RACE_WORDS[wordIndex];
-        if (currentInput === currentWord) {
-          // Advance to next word
-          playClick();
-          setWordIndex((wi) => {
-            const next = wi + 1;
-            if (next >= RACE_WORDS.length) {
-              const completionMs = Date.now() - startTime;
-              const mins = completionMs / 1000 / 60;
-              const finalWpm = Math.round(RACE_WORDS.length / mins);
-              const finalAccuracy = totalKeystrokes > 0
-                ? Math.round(((totalKeystrokes - errors) / totalKeystrokes) * 100)
-                : 100;
-              playComplete();
-              setTimeout(() => {
-                onComplete({
-                  username,
-                  completionTime: completionMs,
-                  wpm: finalWpm,
-                  accuracy: Math.max(0, Math.min(100, finalAccuracy)),
-                });
-              }, 0);
-            }
-            return next;
-          });
-          setCurrentInput("");
-          setCharIndex(0);
-          setInputError(false);
-          setStreak((s) => s + 1);
-        } else {
-          // Word not complete
-          triggerError();
-        }
+        confirmWord(currentInput);
         return;
       }
 
@@ -122,16 +126,23 @@ export default function TypingGame({ username, onComplete }: TypingGameProps) {
         return;
       }
     },
-    [currentInput, wordIndex, startTime, totalKeystrokes, errors, username, onComplete]
+    [currentInput, confirmWord]
   );
 
   const handleChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
-      // Strip spaces from input value (handled by keyDown)
+      const hasSpace = val.includes(" ");
       const clean = val.replace(/\s/g, "");
       const currentWord = RACE_WORDS[wordIndex];
       if (!currentWord) return;
+
+      // Mobile: space came through onChange — treat as word confirm
+      if (hasSpace) {
+        setTotalKeystrokes((k) => k + 1);
+        confirmWord(clean);
+        return;
+      }
 
       setTotalKeystrokes((k) => k + 1);
 
@@ -147,7 +158,6 @@ export default function TypingGame({ username, onComplete }: TypingGameProps) {
         }
       }
 
-      // Check for errors
       const hasError = clean
         .slice(0, Math.min(typedLen, currentWord.length))
         .split("")
@@ -165,7 +175,7 @@ export default function TypingGame({ username, onComplete }: TypingGameProps) {
       setCurrentInput(clean);
       setCharIndex(clean.length);
     },
-    [charStates, wordIndex]
+    [charStates, wordIndex, confirmWord]
   );
 
   function triggerError() {
