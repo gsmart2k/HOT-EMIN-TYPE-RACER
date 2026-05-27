@@ -17,6 +17,56 @@ function getCtx(): AudioContext {
 }
 
 
+// Musical notes in Hz
+const NOTES: Record<string, number> = {
+  C3: 130.81, E3: 164.81, G3: 196.00, A3: 220.00, B3: 246.94,
+  C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00, B4: 493.88,
+  C5: 523.25, E5: 659.25, G5: 783.99,
+};
+
+// Gentle repeating melody — lo-fi ambient feel
+const MELODY = [
+  "E4","G4","A4","C5","B4","G4","A4","E4",
+  "D4","G4","A4","C5","A4","G4","E4","D4",
+];
+
+// Soft bass line
+const BASS = ["C3","C3","G3","G3","A3","A3","E3","E3"];
+
+let melodyTimer: ReturnType<typeof setTimeout> | null = null;
+let bassTimer: ReturnType<typeof setTimeout> | null = null;
+
+function playNote(
+  freq: number,
+  startTime: number,
+  duration: number,
+  gainVal: number,
+  type: OscillatorType = "sine"
+) {
+  const c = getCtx();
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  const filter = c.createBiquadFilter();
+
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(1200, startTime);
+
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, startTime);
+
+  g.gain.setValueAtTime(0, startTime);
+  g.gain.linearRampToValueAtTime(gainVal, startTime + 0.05);
+  g.gain.setValueAtTime(gainVal, startTime + duration * 0.7);
+  g.gain.linearRampToValueAtTime(0, startTime + duration);
+
+  osc.connect(filter);
+  filter.connect(g);
+  g.connect(masterGain!);
+
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
 export function startAmbient() {
   if (typeof window === "undefined") return;
   const c = getCtx();
@@ -24,74 +74,40 @@ export function startAmbient() {
 
   stopAmbient();
 
-  // Soft pad — four detuned sine waves forming a gentle chord (C maj)
-  // Root + major third + fifth + octave, all slightly detuned for warmth
-  const padLayers: [number, number][] = [
-    [261.63, 0],    // C4
-    [329.63, 4],    // E4 + tiny detune
-    [392.00, -3],   // G4
-    [523.25, 6],    // C5
-  ];
+  const BPM = 72;
+  const beat = 60 / BPM;
 
-  const allNodes: AudioNode[] = [];
+  let melodyStep = 0;
+  let bassStep = 0;
 
-  // Shared soft low-pass filter — removes any harshness
-  const filter = c.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(900, c.currentTime);
-  filter.Q.setValueAtTime(0.5, c.currentTime);
-  filter.connect(masterGain!);
+  function scheduleMelody() {
+    if (isMuted) { melodyTimer = setTimeout(scheduleMelody, beat * 1000); return; }
+    const note = MELODY[melodyStep % MELODY.length];
+    playNote(NOTES[note], c.currentTime, beat * 0.85, 0.07, "triangle");
+    melodyStep++;
+    melodyTimer = setTimeout(scheduleMelody, beat * 1000);
+  }
 
-  padLayers.forEach(([freq, detune]) => {
-    const osc = c.createOscillator();
-    const g = c.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(freq, c.currentTime);
-    osc.detune.setValueAtTime(detune, c.currentTime);
-    // Fade in gently over 3 seconds
-    g.gain.setValueAtTime(0, c.currentTime);
-    g.gain.linearRampToValueAtTime(0.06, c.currentTime + 3);
-    osc.connect(g);
-    g.connect(filter);
-    osc.start();
-    allNodes.push(osc, g);
-  });
+  function scheduleBass() {
+    if (isMuted) { bassTimer = setTimeout(scheduleBass, beat * 2000); return; }
+    const note = BASS[bassStep % BASS.length];
+    playNote(NOTES[note], c.currentTime, beat * 1.8, 0.09, "sine");
+    bassStep++;
+    bassTimer = setTimeout(scheduleBass, beat * 2 * 1000);
+  }
 
-  // Slow breathing LFO — gentle volume swell every ~8 seconds
-  const lfo = c.createOscillator();
-  const lfoGain = c.createGain();
-  lfo.type = "sine";
-  lfo.frequency.setValueAtTime(0.12, c.currentTime);
-  lfoGain.gain.setValueAtTime(0.015, c.currentTime);
-  lfo.connect(lfoGain);
-  lfoGain.connect(masterGain!.gain as unknown as AudioNode);
-  lfo.start();
+  // Fade in master gain gently
+  masterGain!.gain.setValueAtTime(0, c.currentTime);
+  masterGain!.gain.linearRampToValueAtTime(0.18, c.currentTime + 2);
 
-  // Very soft high shimmer — triangle wave one octave up for air
-  const shimmer = c.createOscillator();
-  const shimmerGain = c.createGain();
-  shimmer.type = "triangle";
-  shimmer.frequency.setValueAtTime(1046.5, c.currentTime); // C6
-  shimmerGain.gain.setValueAtTime(0, c.currentTime);
-  shimmerGain.gain.linearRampToValueAtTime(0.012, c.currentTime + 4);
-  shimmer.connect(shimmerGain);
-  shimmerGain.connect(filter);
-  shimmer.start();
-
-  droneNodes = [...allNodes, lfo, lfoGain, filter, shimmer, shimmerGain];
-
-  // Slow breathing master gain pulse
-  let t = 0;
-  pulseInterval = setInterval(() => {
-    if (!masterGain || isMuted) return;
-    t += 0.03;
-    const pulse = 0.16 + Math.sin(t * 0.25) * 0.025;
-    masterGain.gain.setValueAtTime(pulse, c.currentTime);
-  }, 100);
+  scheduleMelody();
+  scheduleBass();
 }
 
 export function stopAmbient() {
   if (pulseInterval) { clearInterval(pulseInterval); pulseInterval = null; }
+  if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
+  if (bassTimer) { clearTimeout(bassTimer); bassTimer = null; }
   droneNodes.forEach((n) => {
     try {
       if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop();
