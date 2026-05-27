@@ -1,129 +1,49 @@
 "use client";
 
-let ctx: AudioContext | null = null;
-let masterGain: GainNode | null = null;
-let droneNodes: AudioNode[] = [];
-let pulseInterval: ReturnType<typeof setInterval> | null = null;
+let audio: HTMLAudioElement | null = null;
 let isMuted = false;
 
+// Separate AudioContext only for sound effects (click, error, beeps)
+let ctx: AudioContext | null = null;
+
 function getCtx(): AudioContext {
-  if (!ctx) {
-    ctx = new AudioContext();
-    masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(0.18, ctx.currentTime);
-    masterGain.connect(ctx.destination);
-  }
+  if (!ctx) ctx = new AudioContext();
   return ctx;
 }
 
-
-// Musical notes in Hz
-const NOTES: Record<string, number> = {
-  C3: 130.81, E3: 164.81, G3: 196.00, A3: 220.00, B3: 246.94,
-  C4: 261.63, D4: 293.66, E4: 329.63, G4: 392.00, A4: 440.00, B4: 493.88,
-  C5: 523.25, E5: 659.25, G5: 783.99,
-};
-
-// Gentle repeating melody — lo-fi ambient feel
-const MELODY = [
-  "E4","G4","A4","C5","B4","G4","A4","E4",
-  "D4","G4","A4","C5","A4","G4","E4","D4",
-];
-
-// Soft bass line
-const BASS = ["C3","C3","G3","G3","A3","A3","E3","E3"];
-
-let melodyTimer: ReturnType<typeof setTimeout> | null = null;
-let bassTimer: ReturnType<typeof setTimeout> | null = null;
-
-function playNote(
-  freq: number,
-  startTime: number,
-  duration: number,
-  gainVal: number,
-  type: OscillatorType = "sine"
-) {
-  const c = getCtx();
-  const osc = c.createOscillator();
-  const g = c.createGain();
-  const filter = c.createBiquadFilter();
-
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(1200, startTime);
-
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, startTime);
-
-  g.gain.setValueAtTime(0, startTime);
-  g.gain.linearRampToValueAtTime(gainVal, startTime + 0.05);
-  g.gain.setValueAtTime(gainVal, startTime + duration * 0.7);
-  g.gain.linearRampToValueAtTime(0, startTime + duration);
-
-  osc.connect(filter);
-  filter.connect(g);
-  g.connect(masterGain!);
-
-  osc.start(startTime);
-  osc.stop(startTime + duration);
-}
+// ─── Background music ───────────────────────────────────────────────────────
 
 export function startAmbient() {
   if (typeof window === "undefined") return;
-  const c = getCtx();
-  if (c.state === "suspended") c.resume();
-
-  stopAmbient();
-
-  const BPM = 72;
-  const beat = 60 / BPM;
-
-  let melodyStep = 0;
-  let bassStep = 0;
-
-  function scheduleMelody() {
-    if (isMuted) { melodyTimer = setTimeout(scheduleMelody, beat * 1000); return; }
-    const note = MELODY[melodyStep % MELODY.length];
-    playNote(NOTES[note], c.currentTime, beat * 0.85, 0.07, "triangle");
-    melodyStep++;
-    melodyTimer = setTimeout(scheduleMelody, beat * 1000);
+  if (!audio) {
+    audio = new Audio("/music.mp3");
+    audio.loop = true;
+    audio.volume = 0;
   }
-
-  function scheduleBass() {
-    if (isMuted) { bassTimer = setTimeout(scheduleBass, beat * 2000); return; }
-    const note = BASS[bassStep % BASS.length];
-    playNote(NOTES[note], c.currentTime, beat * 1.8, 0.09, "sine");
-    bassStep++;
-    bassTimer = setTimeout(scheduleBass, beat * 2 * 1000);
-  }
-
-  // Fade in master gain gently
-  masterGain!.gain.setValueAtTime(0, c.currentTime);
-  masterGain!.gain.linearRampToValueAtTime(0.18, c.currentTime + 2);
-
-  scheduleMelody();
-  scheduleBass();
+  audio.play().catch(() => {});
+  let vol = 0;
+  const fade = setInterval(() => {
+    if (!audio) { clearInterval(fade); return; }
+    vol = Math.min(vol + 0.01, isMuted ? 0 : 0.18);
+    audio.volume = vol;
+    if (vol >= 0.18 || isMuted) clearInterval(fade);
+  }, 100);
 }
 
 export function stopAmbient() {
-  if (pulseInterval) { clearInterval(pulseInterval); pulseInterval = null; }
-  if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
-  if (bassTimer) { clearTimeout(bassTimer); bassTimer = null; }
-  droneNodes.forEach((n) => {
-    try {
-      if (n instanceof OscillatorNode || n instanceof AudioBufferSourceNode) n.stop();
-      n.disconnect();
-    } catch {}
-  });
-  droneNodes = [];
+  if (!audio) return;
+  audio.pause();
+  audio.currentTime = 0;
 }
 
 export function setMuted(mute: boolean) {
   isMuted = mute;
-  if (!masterGain || !ctx) return;
-  masterGain.gain.setTargetAtTime(mute ? 0 : 0.18, ctx.currentTime, 0.3);
+  if (audio) audio.volume = mute ? 0 : 0.18;
 }
 
 export function getMuted() { return isMuted; }
+
+// ─── Sound effects ───────────────────────────────────────────────────────────
 
 export function playClick() {
   if (isMuted || typeof window === "undefined") return;
