@@ -61,6 +61,13 @@ export default function Footer() {
         </div>
       </div>
 
+      {/* Music disclaimer */}
+      <div className="max-w-7xl mx-auto px-6 pb-3 text-center">
+        <p className="text-gray-700 text-[10px] tracking-wide" style={{ fontFamily: "Rajdhani, sans-serif" }}>
+          🎵 Background music is the property of <span className="text-gray-500">Eminem / Shady Records</span>. Used for non-commercial entertainment purposes only. All rights reserved to the respective owners.
+        </p>
+      </div>
+
       {/* Bottom accent line */}
       <div
         className="h-px w-full"
