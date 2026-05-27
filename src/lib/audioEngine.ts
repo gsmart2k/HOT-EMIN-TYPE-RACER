@@ -16,24 +16,6 @@ function getCtx(): AudioContext {
   return ctx;
 }
 
-function createDroneOscillator(
-  freq: number,
-  type: OscillatorType,
-  gainVal: number,
-  detune = 0
-): [OscillatorNode, GainNode] {
-  const c = getCtx();
-  const osc = c.createOscillator();
-  const g = c.createGain();
-  osc.type = type;
-  osc.frequency.setValueAtTime(freq, c.currentTime);
-  osc.detune.setValueAtTime(detune, c.currentTime);
-  g.gain.setValueAtTime(gainVal, c.currentTime);
-  osc.connect(g);
-  g.connect(masterGain!);
-  osc.start();
-  return [osc, g];
-}
 
 export function startAmbient() {
   if (typeof window === "undefined") return;
@@ -42,51 +24,68 @@ export function startAmbient() {
 
   stopAmbient();
 
-  // Sub-bass drone — deep ominous hum
-  const [o1, g1] = createDroneOscillator(40, "sine", 0.5);
-  // Mid drone with slow LFO
-  const [o2, g2] = createDroneOscillator(80, "sawtooth", 0.08, -5);
-  // High frequency tension layer
-  const [o3, g3] = createDroneOscillator(160, "triangle", 0.04, 3);
+  // Soft pad — four detuned sine waves forming a gentle chord (C maj)
+  // Root + major third + fifth + octave, all slightly detuned for warmth
+  const padLayers: [number, number][] = [
+    [261.63, 0],    // C4
+    [329.63, 4],    // E4 + tiny detune
+    [392.00, -3],   // G4
+    [523.25, 6],    // C5
+  ];
 
-  // LFO for tremolo on mid drone
+  const allNodes: AudioNode[] = [];
+
+  // Shared soft low-pass filter — removes any harshness
+  const filter = c.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(900, c.currentTime);
+  filter.Q.setValueAtTime(0.5, c.currentTime);
+  filter.connect(masterGain!);
+
+  padLayers.forEach(([freq, detune]) => {
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, c.currentTime);
+    osc.detune.setValueAtTime(detune, c.currentTime);
+    // Fade in gently over 3 seconds
+    g.gain.setValueAtTime(0, c.currentTime);
+    g.gain.linearRampToValueAtTime(0.06, c.currentTime + 3);
+    osc.connect(g);
+    g.connect(filter);
+    osc.start();
+    allNodes.push(osc, g);
+  });
+
+  // Slow breathing LFO — gentle volume swell every ~8 seconds
   const lfo = c.createOscillator();
   const lfoGain = c.createGain();
   lfo.type = "sine";
-  lfo.frequency.setValueAtTime(0.15, c.currentTime);
-  lfoGain.gain.setValueAtTime(0.03, c.currentTime);
+  lfo.frequency.setValueAtTime(0.12, c.currentTime);
+  lfoGain.gain.setValueAtTime(0.015, c.currentTime);
   lfo.connect(lfoGain);
-  lfoGain.connect(g2.gain);
+  lfoGain.connect(masterGain!.gain as unknown as AudioNode);
   lfo.start();
 
-  // Low-pass filter for warmth
-  const filter = c.createBiquadFilter();
-  filter.type = "lowpass";
-  filter.frequency.setValueAtTime(300, c.currentTime);
-  filter.Q.setValueAtTime(1, c.currentTime);
+  // Very soft high shimmer — triangle wave one octave up for air
+  const shimmer = c.createOscillator();
+  const shimmerGain = c.createGain();
+  shimmer.type = "triangle";
+  shimmer.frequency.setValueAtTime(1046.5, c.currentTime); // C6
+  shimmerGain.gain.setValueAtTime(0, c.currentTime);
+  shimmerGain.gain.linearRampToValueAtTime(0.012, c.currentTime + 4);
+  shimmer.connect(shimmerGain);
+  shimmerGain.connect(filter);
+  shimmer.start();
 
-  // Subtle noise layer
-  const bufferSize = c.sampleRate * 2;
-  const buffer = c.createBuffer(1, bufferSize, c.sampleRate);
-  const data = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.015;
-  const noise = c.createBufferSource();
-  noise.buffer = buffer;
-  noise.loop = true;
-  const noiseGain = c.createGain();
-  noiseGain.gain.setValueAtTime(0.06, c.currentTime);
-  noise.connect(noiseGain);
-  noiseGain.connect(masterGain!);
-  noise.start();
+  droneNodes = [...allNodes, lfo, lfoGain, filter, shimmer, shimmerGain];
 
-  droneNodes = [o1, g1, o2, g2, o3, g3, lfo, lfoGain, filter, noise, noiseGain];
-
-  // Slow pulsing gain modulation for cinematic feel
+  // Slow breathing master gain pulse
   let t = 0;
   pulseInterval = setInterval(() => {
     if (!masterGain || isMuted) return;
-    t += 0.05;
-    const pulse = 0.18 + Math.sin(t * 0.4) * 0.03;
+    t += 0.03;
+    const pulse = 0.16 + Math.sin(t * 0.25) * 0.025;
     masterGain.gain.setValueAtTime(pulse, c.currentTime);
   }, 100);
 }
